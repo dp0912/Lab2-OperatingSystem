@@ -1,0 +1,11 @@
+Welcome to MyShell!
+
+Available Commands:
+- cd <directory>: Change the current directory
+- clr: Clear the screen
+- dir <directory>: List files in a directory
+- environ: List all environment variables
+- echo <message>: Print a message
+- help: Show this help menu
+- pause: Wait for user to press Enter
+- quit: Exit the shell
