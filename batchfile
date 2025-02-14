@@ -1,4 +1,8 @@
 echo Testing batch mode
+cd
 dir
 environ
+help
+pause
+clr
 quit
