@@ -7,9 +7,9 @@
 #include <errno.h>
 
 #define MAX_INPUT_SIZE 1024  // Maximum size of input string
-#define MAX_ARG_SIZE 100    // Maximum number of arguments
+#define MAX_ARG_SIZE 100     // Maximum number of arguments
 
-// Function declarations for internal command functions and others
+// Function declarations
 void execute_command(char *args[]);
 void internal_cd(char *path);
 void internal_clr();
@@ -22,182 +22,203 @@ void internal_quit();
 void execute_external(char *args[]);
 void batch_mode(FILE *file);
 
-// Main shell loop
 int main(int argc, char *argv[]) {
-    char input[MAX_INPUT_SIZE];  // Holds the input from the user
-    char *args[MAX_ARG_SIZE];    // Array to store arguments from input
+    char input[MAX_INPUT_SIZE];  // Input buffer
+    char *args[MAX_ARG_SIZE];    // Arguments array
 
-    // Set shell environment variable for the current shell path
+    // Set the SHELL environment variable
     char shell_path[MAX_INPUT_SIZE];
-    getcwd(shell_path, sizeof(shell_path));  // Get the current working directory
-    strcat(shell_path, "/myshell");  // Append the shell executable name
-    setenv("shell", shell_path, 1);  // Set the "shell" environment variable
+    if (realpath("/proc/self/exe", shell_path) != NULL) {
+        setenv("shell", shell_path, 1);  // Set the shell's full path in the environment
+    } else {
+        perror("myshell: Unable to set SHELL environment variable");
+    }
 
-    // Check if running in batch mode (if a file is provided as an argument)
+    // Check for batch mode
     if (argc == 2) {
-        FILE *batch_file = fopen(argv[1], "r");  // Open batch file
+        FILE *batch_file = fopen(argv[1], "r");
         if (!batch_file) {
-            perror("Batch file error");
-            return 1;  // Return error if batch file can't be opened
+            perror("myshell: Unable to open batch file");
+            return 1;
         }
-        batch_mode(batch_file);  // Process the batch file commands
-        fclose(batch_file);  // Close the batch file
+        batch_mode(batch_file);
+        fclose(batch_file);
         return 0;
     }
 
-    // Interactive mode (for command line input)
+    // Interactive mode
     while (1) {
         printf("myshell> ");
         if (!fgets(input, MAX_INPUT_SIZE, stdin)) {
-            break;  // Exit the shell if EOF is encountered
+            break;
         }
-        
-        input[strcspn(input, "\n")] = 0;  // Remove newline character from input
+        input[strcspn(input, "\n")] = 0;  // Remove newline character
 
         // Tokenize input into arguments
         int i = 0;
         char *token = strtok(input, " ");
         while (token != NULL && i < MAX_ARG_SIZE - 1) {
-            args[i++] = token;  // Add token to the args array
+            args[i++] = token;
             token = strtok(NULL, " ");
         }
-        args[i] = NULL;  // Null-terminate the arguments list
+        args[i] = NULL;  // Null-terminate the argument list
 
-        // If a command is entered, execute it
+        // Execute the command
         if (args[0]) {
-            execute_command(args);  // Execute the command
+            execute_command(args);
         }
     }
     return 0;
 }
 
-// Function to execute commands
+// Execute commands
 void execute_command(char *args[]) {
     if (strcmp(args[0], "cd") == 0) {
-        internal_cd(args[1]);  // Change directory
+        printf("myshell: Executing internal command: cd\n");
+        internal_cd(args[1]);
     } else if (strcmp(args[0], "clr") == 0) {
-        internal_clr();  // Clear the screen
+        printf("myshell: Executing internal command: clr\n");
+        internal_clr();
     } else if (strcmp(args[0], "dir") == 0) {
-        internal_dir(args[1] ? args[1] : ".");  // List directory contents
+        printf("myshell: Executing internal command: dir\n");
+        internal_dir(args[1] ? args[1] : ".");
     } else if (strcmp(args[0], "environ") == 0) {
-        internal_environ();  // List environment variables
+        printf("myshell: Executing internal command: environ\n");
+        internal_environ();
     } else if (strcmp(args[0], "echo") == 0) {
-        internal_echo(args);  // Echo message
+        printf("myshell: Executing internal command: echo\n");
+        internal_echo(args);
     } else if (strcmp(args[0], "help") == 0) {
-        internal_help();  // Display help menu
+        printf("myshell: Executing internal command: help\n");
+        internal_help();
     } else if (strcmp(args[0], "pause") == 0) {
-        internal_pause();  // Wait for user input
+        printf("myshell: Executing internal command: pause\n");
+        internal_pause();
     } else if (strcmp(args[0], "quit") == 0) {
-        internal_quit();  // Exit the shell
+        printf("myshell: Executing internal command: quit\n");
+        internal_quit();
     } else {
-        execute_external(args);  // Execute external commands
+        printf("myshell: Executing external command: %s\n", args[0]);
+        execute_external(args);
     }
 }
 
 // Internal command implementations
-
-// Change the current directory
 void internal_cd(char *path) {
     if (!path) {
-        printf("Current directory: %s\n", getenv("PWD"));  // Print current directory if no path is provided
+        printf("Current directory: %s\n", getenv("PWD"));
         return;
     }
     if (chdir(path) == 0) {
-        setenv("PWD", path, 1);  // Update the PWD environment variable
+        setenv("PWD", path, 1);  // Update PWD environment variable
     } else {
-        perror("cd failed");  // Print error if chdir fails
+        perror("myshell: cd failed");
     }
 }
 
-// Clear the terminal screen
 void internal_clr() {
     if (system("clear") == -1) {
-        perror("clr failed");  // Print error if the command fails
+        perror("myshell: clr failed");
     }
 }
 
-// List contents of a directory
 void internal_dir(char *path) {
-    DIR *dir = opendir(path);  // Open directory
+    DIR *dir = opendir(path);
     if (!dir) {
-        perror("dir failed");  // Print error if directory can't be opened
+        perror("myshell: dir failed");
         return;
     }
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
-        printf("%s  ", entry->d_name);  // Print each directory entry
+        printf("%s  ", entry->d_name);
     }
     printf("\n");
-    closedir(dir);  // Close the directory
+    closedir(dir);
 }
 
-// Print environment variables
 void internal_environ() {
-    extern char **environ;  // Get environment variables
+    extern char **environ;
     for (char **env = environ; *env; env++) {
-        printf("%s\n", *env);  // Print each environment variable
+        printf("%s\n", *env);
     }
 }
 
-// Echo a message
 void internal_echo(char *args[]) {
+    if (!args[1]) {
+        printf("myshell: No message provided.\n");
+        return;
+    }
     for (int i = 1; args[i]; i++) {
-        printf("%s ", args[i]);  // Print each argument
+        printf("%s ", args[i]);
     }
     printf("\n");
 }
 
-// Show help information
 void internal_help() {
     if (system("more help.txt") == -1) {
-        perror("help failed");  // Print error if the help command fails
+        perror("myshell: help failed");
     }
 }
 
-// Pause execution and wait for user to press Enter
 void internal_pause() {
     printf("Press Enter to continue...\n");
     while (getchar() != '\n');  // Wait until Enter is pressed
 }
 
-// Quit the shell
 void internal_quit() {
     printf("Exiting shell...\n");
-    exit(0);  // Exit the program
+    exit(0);
 }
 
-// Function to execute external commands
+// Execute external commands
 void execute_external(char *args[]) {
-    pid_t pid = fork();  // Create a new process
+    pid_t pid = fork();  // Create a child process
     if (pid == 0) {
-        // Child process
-        setenv("parent", getenv("shell"), 1);  // Set the parent shell environment variable
-        execvp(args[0], args);  // Execute the external command
-        perror("Command execution failed");  // If execvp fails, print error
-        exit(1);  // Exit child process
+        // In child process
+        printf("myshell: Fork successful. In child process (PID: %d).\n", getpid());
+        setenv("parent", getenv("shell"), 1);  // Set the "parent" environment variable
+
+        // Execute the command
+        if (execvp(args[0], args) == -1) {
+            perror("myshell: Command execution failed");
+        }
+        exit(EXIT_FAILURE);  // Exit child if execvp fails
     } else if (pid > 0) {
-        // Parent process
-        wait(NULL);  // Wait for the child process to complete
+        // In parent process
+        int status;
+        printf("myshell: In parent process (PID: %d). Waiting for child (PID: %d).\n", getpid(), pid);
+
+        // Wait for the child process to complete
+        waitpid(pid, &status, 0);
+
+        // Check child's exit status
+        if (WIFEXITED(status)) {
+            printf("myshell: Child exited with code %d.\n", WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            printf("myshell: Child terminated by signal %d.\n", WTERMSIG(status));
+        }
     } else {
-        perror("Fork failed");  // Print error if fork fails
+        perror("myshell: Fork failed");
     }
 }
 
-// Batch mode function to process commands from a file
+// Batch mode function
 void batch_mode(FILE *file) {
-    char line[MAX_INPUT_SIZE];  // Line buffer to hold commands from file
+    char line[MAX_INPUT_SIZE];
     while (fgets(line, sizeof(line), file)) {
-        line[strcspn(line, "\n")] = 0;  // Remove newline from the end
-        char *args[MAX_ARG_SIZE];  // Array to store arguments
+        line[strcspn(line, "\n")] = 0;  // Remove newline character
+        if (line[0] == '\0' || line[0] == '#') continue;  // Skip empty lines or comments
+
+        char *args[MAX_ARG_SIZE];
         int i = 0;
-        char *token = strtok(line, " ");  // Tokenize the line into arguments
+        char *token = strtok(line, " ");
         while (token != NULL && i < MAX_ARG_SIZE - 1) {
-            args[i++] = token;  // Add token to the args array
+            args[i++] = token;
             token = strtok(NULL, " ");
         }
-        args[i] = NULL;  // Null-terminate the arguments list
+        args[i] = NULL;
         if (args[0]) {
-            execute_command(args);  // Execute the command
+            execute_command(args);
         }
     }
 }

@@ -1,0 +1,4 @@
+echo Testing batch mode
+dir
+environ
+quit
