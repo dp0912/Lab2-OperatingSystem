@@ -1,10 +1,15 @@
-#include <stdio.h>
+#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE 
+
+#include <limits.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <dirent.h>
 #include <errno.h>
+
 
 #define MAX_INPUT_SIZE 1024  // Maximum size of input string
 #define MAX_ARG_SIZE 100     // Maximum number of arguments
@@ -28,7 +33,8 @@ int main(int argc, char *argv[]) {
 
     // Set the SHELL environment variable
     char shell_path[MAX_INPUT_SIZE];
-    if (realpath("/proc/self/exe", shell_path) != NULL) {
+    char *result = realpath("/proc/self/exe", shell_path);
+    if (result != NULL) {
         setenv("shell", shell_path, 1);  // Set the shell's full path in the environment
     } else {
         perror("myshell: Unable to set SHELL environment variable");
